@@ -47,21 +47,24 @@ aggr_badana = summarize(aggr_badana,
                         sr_tempo_kroku_L =  mean(tempo_kroku_L),
                         sr_tempo_kroku_R =  mean(tempo_kroku_R),
                         sr_podw_podp = mean(podw_podp),
-                        sr_pojed_podp = mean(pojed_podp)
-                        )
+                        sr_pojed_podp = mean(pojed_podp))
+
 View(aggr_badana)
 
 #WIZUALIZACJA DANYCH
+n = length(grupa_badana$cykl_kroku_L)
+bins = ceiling(log2(n)+1)
 
 grupa_badana %>%
     ggplot(aes(x = cykl_kroku_L)) + 
-    geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+    geom_histogram(binwidth = 0.05,bins =bins, fill = "steelblue", color = "white") +
+    geom_vline(aes(xintercept = median(cykl_kroku_L)),color = "red", linetype = "dashed", size = 1) +
     labs(x = "Dlugosc cyklu (s)", y = "Liczba obserwacji", title = "Rozklad cyklu kroku lewej nogi")+
     theme_minimal()
 
 grupa_badana %>%
   ggplot(aes(x = cykl_kroku_R)) + 
-  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  geom_histogram(binwidth = 0.05,bins =bins, fill = "steelblue", color = "white") +
   labs(x = "Dlugosc cyklu (s)", y = "Liczba obserwacji", title = "Rozklad cyklu kroku prawej nogi")+
   theme_minimal()
 
