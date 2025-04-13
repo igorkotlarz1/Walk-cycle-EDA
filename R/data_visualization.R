@@ -1,4 +1,5 @@
 library(readr)
+library(ggplot2)
 
 path_badani = "C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Badana_10_parametry_kroku.csv" 
 path_kontrolna ="C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Kontrolna_10_parametry_kroku.csv"
@@ -14,3 +15,6 @@ colnames(grupa_kontrolna) = etykiety_kolumn
 
 View(grupa_badana)
 View(grupa_kontrolna)
+
+boxplot(grupa_badana[["cykl_kroku_L"]], grupa_badana[["cykl_kroku_R"]])
+boxplot(grupa_badana[["dl_fazy_podp_L"]], grupa_badana[["dl_fazy_podp_R"]])
