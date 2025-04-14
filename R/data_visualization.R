@@ -210,6 +210,4 @@ ggplot(filter(aggr_long, statystyka == "odchylenie"), aes(x = rodzaj_testu, y = 
 
 dev.off()
 }
-#aggr_kontrolna = group_by(grupa_badana, nazwa_testu)
 
-#View(aggr_kontrolna)
