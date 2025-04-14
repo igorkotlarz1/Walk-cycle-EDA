@@ -1,5 +1,6 @@
 library(readr) #czytanie danych
 library(ggplot2) #wizualizacja
+library(gridExtra) #wiele wykresow jednoczesnie
 library(dplyr) #agregacja
 library(tidyr)
 library(tidyverse)
@@ -87,14 +88,27 @@ p2 = grupa_long %>%
 p3 = grupa_long %>%
   filter(parametr %in% grupa3) %>%
   ggplot(aes(x = wartosc)) +
-  geom_histogram(binwidth = 0.03, fill = "limegreen", color = "white") +
+  geom_histogram(aes(y = after_stat(density)),binwidth = 0.03, fill = "limegreen", color = "white") + #aes(y = after_stat(density))
+  geom_density(adjust = 2.5,fill = "limegreen",color = "darkgreen", alpha = 0.35)+
   facet_wrap(~ parametr, scales = "free") +
   labs(title = NULL, x = NULL, y = "Liczba obserwacji") +
   theme_minimal()+
   theme(strip.text = element_text(size = 14))+
   coord_cartesian(xlim = c(0, NA))
+  print(p3)
 
-  #print(p3)
+p3_qq <- grupa_long %>%
+  filter(parametr %in% grupa3) %>%
+  ggplot(aes(sample = wartosc)) +
+  geom_qq() +
+  geom_qq_line(color = "limegreen") +
+  facet_wrap(~ parametr, scales = "free") +
+  labs(title = NULL, x = NULL, y = "Oczekiwane wartości") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 14))
+
+#WYSWIETLANIE WYKRESOW OBOK SIEBIE
+grid.arrange(p3, p3_qq, ncol = 1)
   
 p4 = grupa_long %>%
   filter(parametr %in% grupa4) %>%
@@ -110,8 +124,7 @@ p4 = grupa_long %>%
 
 
 #SKRYPT DO AUTOMATYCZNEGO ZAPISYWANIA WYKRESÓW DO FORMATU .png 
-
-histogramy = list(p1,p2,p3,p4)
+histogramy = list(p1,p2,p3,p4) 
 tytuly_hist = c("hist_cykle", "hist_fazy", "hist_podparcia","hist_tempa")
 
 for(i in seq_along(histogramy))
@@ -136,33 +149,31 @@ aggr_long = aggr_badana %>%
 
 #ZESTAWIENIE ŚREDNICH W ZALEŻNOŚCI OD RODZAJU TESTU
 
-#pdf("srednie_parametry_badani.pdf", width = 10, height = 8)
-#png("srednie_parametry_badani.png", width = 1600, height = 1280, res =150)
+png("srednie_parametry_badani.png", width = 1920, height = 1080, res = 200)
 
 ggplot(filter(aggr_long, statystyka == "srednia"), aes(x = rodzaj_testu, y = value, fill = rodzaj_testu)) +
   geom_bar(stat = "identity", color = "white") +
   geom_text(aes(label = round(value, 3)),vjust = 2, size = 3, color = "black")+
   facet_wrap(~parametr, scales = "free_y") +
-  labs(title = "Średnie parametrów w zależności od rodzaju testu", x = NULL, y = "Średnia") +
+  labs(title = NULL, x = NULL, y = "Średnia") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#dev.off()
+dev.off()
 
 #ZESTAWIENIE ODCHYLEŃ STANDARDOWYCH W ZALEŻNOŚCI OD RODZAJU TESTU
 
-#pdf("odchylenie_parametry_badani.pdf", width = 10, height = 8)
-#png("odchylenie_parametry_badani.png", width = 1600, height = 1280, res =150)
+png("odchylenie_parametry_badani.png", width = 1920, height = 1080, res = 200)
 
 ggplot(filter(aggr_long, statystyka == "odchylenie"), aes(x = rodzaj_testu, y = value, fill = rodzaj_testu)) +
   geom_bar(stat = "identity", color = "white") +
   geom_text(aes(label = round(value, 3)),vjust = 1.5, size = 3, color = "black")+
   facet_wrap(~parametr, scales = "free_y") +
-  labs(title = "Odchylenie standardowe od średniej parametrów w zależności od rodzaju testu", x = NULL, y = "Średnia") +
+  labs(title = NULL, x = NULL, y = "Odchylenie standardowe") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#dev.off()
+dev.off()
 
 
 
