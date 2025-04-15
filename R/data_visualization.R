@@ -34,7 +34,7 @@ grupa_badana$rodzaj_testu = case_when(
 #AGREGACJA GRUPY BADANEJ - GRUPOWANIE PO RODZAJU TESTU
 aggr_badana = grupa_badana %>%
   group_by(rodzaj_testu) %>%
-  summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd),
+  summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maks = max),
                    .names = "{.col}_{.fn}")) #zapis ktory tworzy etykiety nazwa_kolumny_funkcja_agregujaca
 
 View(grupa_badana)
