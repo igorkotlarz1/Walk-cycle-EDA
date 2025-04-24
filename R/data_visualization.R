@@ -4,14 +4,12 @@ library(gridExtra) #wiele wykresow jednoczesnie
 library(dplyr) #agregacja
 library(tidyr)
 library(tidyverse) #workflow, pipeliney
-#library(readxl)
 
 path_badani = "C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Badana_10_parametry_kroku.csv"  #.xlsx
 path_kontrolna ="C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Kontrolna_10_parametry_kroku.csv"
 
 #WCZYTYWANIE DANYCH DO DATA FRAMEOW
 grupa_badana = read_delim(path_badani,delim = ";", escape_double = FALSE, trim_ws = TRUE)
-#grupa_badana = read_excel(path_badani)
 grupa_kontrolna = read_delim(path_kontrolna, delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 #UTWORZENIE ETYKIET DLA KAŻDEJ KOLUMNY
@@ -21,9 +19,6 @@ etykiety_kolumn = c("rodzaj_grupy", "id_uczestnika", "nazwa_testu", "cykl_kroku_
 
 colnames(grupa_badana) = etykiety_kolumn
 colnames(grupa_kontrolna) = etykiety_kolumn
-
-#grupa_badana = grupa_badana %>%
-#  mutate(across(all_of(etykiety_kolumn[4:15]), as.numeric))
 
 #DODANIE OSOBNEJ KOLUMNY rodzaj_testu, W CELACH KATEGORYZACJI DANYCH
 grupa_badana$rodzaj_testu = case_when(
@@ -44,17 +39,20 @@ print(sapply(grupa_badana[, -13],  function(kolumna)
 #AGREGACJA GRUPY BADANEJ - GRUPOWANIE PO RODZAJU TESTU
 aggr_badana = grupa_badana %>%
   group_by(rodzaj_testu) %>%
-  summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min),
-                   .names = "{.col}_{.fn}")) #zapis ktory tworzy etykiety nazwa_kolumny_funkcja_agregujaca
-
+  summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+                 
 View(aggr_badana)
 
 #TWORZENIE OSOBNYCH DATA FRAMEOW DLA KAZDEGO SCNEARIUSZU TESTU FILTRUJAC grupa_badana PO KOLUMNIE rodzaj_testu
 badana_las = grupa_badana[grupa_badana$rodzaj_testu == "Las",]
+aggr_las = badana_las %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+
 badana_most = grupa_badana[grupa_badana$rodzaj_testu == "Most",]
+
 badana_stroop = grupa_badana[grupa_badana$rodzaj_testu == "Test Stroopa",]
 
 View(badana_las)
+View(aggr_las)
 View(badana_most)
 View(badana_stroop)
 
