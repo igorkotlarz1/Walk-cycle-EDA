@@ -73,8 +73,29 @@ grupa3 = c("podw_podp", "pojed_podp")
 grupa4 = c("tempo_kroku_L", "tempo_kroku_R")
 
 #BOX PLOTY PARAMETRÓW CHODU
-{
 #cykle
+  
+create_boxplots = function(zestaw_parametrow, data_frame, nazwa, kolor )
+{
+  nazwa_pliku = paste0("boxplot_", nazwa,".png")
+  png(nazwa_pliku, width = 12, height = 8, units = "in", res = 300)
+  par(mfrow = c(2, 2), mar = c(2, 2, 2, 1), cex.main = 1.1)
+  
+  for(parametr in zestaw_parametrow)
+  {
+    boxplot(data_frame[[parametr]], main = parametr, col = kolor)
+    mediana = round(median(data_frame[[parametr]]),3)
+    text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
+  }
+  dev.off()
+}
+  
+create_boxplots(grupa1, grupa_badana,"cykle", "lightblue")
+create_boxplots(grupa2, grupa_badana,"fazy", "darkorange")
+create_boxplots(grupa3, grupa_badana,"podparcia", "limegreen")
+create_boxplots(grupa4, grupa_badana,"tempa", "lightcoral")
+
+{
 png("boxplot_cykle.png", width = 12, height = 8, units = "in", res = 300)
 par(mfrow = c(2, 2), mar = c(2, 2, 2, 1), cex.main = 1.1)
 
