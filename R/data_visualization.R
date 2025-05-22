@@ -29,12 +29,29 @@ grupa_badana$rodzaj_testu = case_when(
 grupa_badana  = grupa_badana %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) #pozbycie sie zbednych kolumn, 
 grupa_badana = grupa_badana[apply(grupa_badana[, -13], 1, function(row) all(row>0)), ] #pozbycie się rekordów z wartościami ujemnymi parametrów
 
+#WYZNACZANIE KWANTYLI I OUTLIEROW
 print(sapply(grupa_badana[, -13],  function(kolumna)
   {
     Q = quantile(kolumna, probs = c(0.25, 0.75))
     IQR = Q[2]-Q[1]
     c(dolna_granica = Q[1]-3*IQR, gorna_granica = Q[2]+3*IQR)
 }))
+
+parametry_numeryczne = names(grupa_badana)[sapply(grupa_badana, is.numeric)]
+
+for(kolumna in parametry_numeryczne)
+{
+  Q1 = quantile(grupa_badana[[kolumna]], 0.25, na.rm = TRUE)
+  Q3 = quantile(grupa_badana[[kolumna]], 0.75, na.rm = TRUE)
+  iqr = Q3 - Q1
+  lower = Q1 - 1.5 * iqr
+  upper = Q3 + 1.5 * iqr
+  
+  grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
+  
+}
+
+View(grupa_badana)
 
 #AGREGACJA GRUPY BADANEJ - GRUPOWANIE PO RODZAJU TESTU
 aggr_badana = grupa_badana %>%
@@ -55,7 +72,22 @@ View(badana_las)
 View(aggr_las)
 View(badana_most)
 View(badana_stroop)
+#===================================================================================================================
+#TESTY NORMALNOSCI
 
+set.seed(1234)
+print(shapiro.test(badana_las$cykl_kroku_L))
+
+  
+testy_badana_las = sapply(badana_las, function(kolumna){
+  if(is.numeric(kolumna))
+  {
+    wynik = shapiro.test(kolumna)
+    return(wynik) #$p.value
+  }
+})
+View(testy_badana_las)
+print(testy_badana_las)
 #===================================================================================================================
 
 #PRZEKSZTAŁCENIE DANYCH DO FORMATU DŁUGIEGO W CELU WYKREŚLENIA WIELU WYKRESÓW JEDNOCZEŚNIE
