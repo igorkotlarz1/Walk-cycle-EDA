@@ -47,9 +47,10 @@ for(kolumna in parametry_numeryczne)
   lower = Q1 - 1.5 * iqr
   upper = Q3 + 1.5 * iqr
   
-  grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
-  
+  #grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
+  grupa_badana[[kolumna]][grupa_badana[[kolumna]] < lower | grupa_badana[[kolumna]] > upper] = NA
 }
+grupa_badana = na.omit(grupa_badana)
 
 View(grupa_badana)
 
@@ -86,7 +87,6 @@ testy_badana_las = sapply(badana_las, function(kolumna){
     return(wynik) #$p.value
   }
 })
-View(testy_badana_las)
 print(testy_badana_las)
 #===================================================================================================================
 
