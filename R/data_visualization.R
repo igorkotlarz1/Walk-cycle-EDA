@@ -26,32 +26,51 @@ grupa_badana$rodzaj_testu = case_when(
     startsWith(grupa_badana$nazwa_testu, "Most") ~ "Most",
     startsWith(grupa_badana$nazwa_testu, "Stroop") ~ "Test Stroopa")
 
-grupa_badana  = grupa_badana %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) #pozbycie sie zbednych kolumn, 
-grupa_badana = grupa_badana[apply(grupa_badana[, -13], 1, function(row) all(row>0)), ] #pozbycie się rekordów z wartościami ujemnymi parametrów
-
-parametry_numeryczne = names(grupa_badana)[sapply(grupa_badana, is.numeric)]
-
-drop_outliers = function(data_frame, parametry)
-{
-  
-}
-
-for(kolumna in parametry_numeryczne)
-{
-  Q1 = quantile(grupa_badana[[kolumna]], 0.25, na.rm = TRUE)
-  Q3 = quantile(grupa_badana[[kolumna]], 0.75, na.rm = TRUE)
-  iqr = Q3 - Q1
-  lower = Q1 - 1.5 * iqr
-  upper = Q3 + 1.5 * iqr
-  
-  #grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
-  grupa_badana[[kolumna]][grupa_badana[[kolumna]] < lower | grupa_badana[[kolumna]] > upper] = NA
-}
-
-grupa_badana = na.omit(grupa_badana)
+#pozbycie sie zbednych kolumn, 
+grupa_badana  = grupa_badana %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) 
+#pozbycie się rekordów z wartościami ujemnymi parametrów
+grupa_badana = grupa_badana[apply(grupa_badana[, -13], 1, function(row) all(row>0)), ] 
 
 View(grupa_badana)
 
+parametry_numeryczne =  c("cykl_kroku_L", "cykl_kroku_R", "dl_fazy_podp_L", "dl_fazy_podp_R",
+                          "dl_fazy_przen_L","dl_fazy_przen_R", "cykl_wykroku_L", "cykl_wykroku_R", "tempo_kroku_L", 
+                          "tempo_kroku_R", "podw_podp", "pojed_podp")
+
+drop_outliers = function(df, parametry)
+{
+  for(kolumna in parametry)
+  {
+    Q1 = quantile(df[[kolumna]], 0.25, na.rm = TRUE)
+    Q3 = quantile(df[[kolumna]], 0.75, na.rm = TRUE)
+    iqr = Q3 - Q1
+    lower = Q1 - 1.0 * iqr
+    upper = Q3 + 1.0 * iqr
+    
+    #grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
+    df[[kolumna]][df[[kolumna]] < lower | df[[kolumna]] > upper] = NA
+  }
+  df = na.omit(df)
+  return(df)
+}
+
+View(grupa_badana)
+
+
+#TWORZENIE OSOBNYCH DATA FRAMEOW DLA KAZDEGO SCNEARIUSZU TESTU FILTRUJAC grupa_badana PO KOLUMNIE rodzaj_testu
+badana_las = grupa_badana[grupa_badana$rodzaj_testu == "Las",]
+badana_most = grupa_badana[grupa_badana$rodzaj_testu == "Most",]
+badana_stroop = grupa_badana[grupa_badana$rodzaj_testu == "Test Stroopa",]
+
+badana_las = drop_outliers(badana_las, parametry_numeryczne)
+badana_most = drop_outliers(badana_most, parametry_numeryczne)
+badana_stroop = drop_outliers(badana_stroop, parametry_numeryczne)
+  
+View(badana_las)
+View(badana_most)
+View(badana_stroop)
+
+#==================================================================================================================
 #AGREGACJA GRUPY BADANEJ - GRUPOWANIE PO RODZAJU TESTU
 aggr_badana = grupa_badana %>%
   group_by(rodzaj_testu) %>%
@@ -59,43 +78,69 @@ aggr_badana = grupa_badana %>%
                  
 View(aggr_badana)
 
-#TWORZENIE OSOBNYCH DATA FRAMEOW DLA KAZDEGO SCNEARIUSZU TESTU FILTRUJAC grupa_badana PO KOLUMNIE rodzaj_testu
-badana_las = grupa_badana[grupa_badana$rodzaj_testu == "Las",]
 aggr_las = badana_las %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+aggr_most = badana_most %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+aggr_stroop = badana_las %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
 
-badana_most = grupa_badana[grupa_badana$rodzaj_testu == "Most",]
-
-badana_stroop = grupa_badana[grupa_badana$rodzaj_testu == "Test Stroopa",]
-
-#View(badana_las)
-#View(aggr_las)
-#View(badana_most)
-#View(badana_stroop)
-
+View(aggr_las)
 #===================================================================================================================
 #TESTY NORMALNOSCI
-
 set.seed(1234)
-print(shapiro.test(badana_las$cykl_kroku_L))
+alpha = 0.05 / 12
 
+normality_test = function(df, alpha)
+{
+  testy = lapply(df, function(kolumna){
+    if(is.numeric(kolumna))
+    {
+      wynik = shapiro.test(kolumna)
+      return(wynik) #$p.value
+    }
+    else
+      { return(NULL)}
+  })
   
-testy_badana_las = sapply(badana_las, function(kolumna){
-  if(is.numeric(kolumna))
-  {
-    wynik = shapiro.test(kolumna)
-    return(wynik) #$p.value
-  }
-})
-print(testy_badana_las)
-#===================================================================================================================
+  testy = Filter(Negate(is.null), testy)
+  
+  result_df = data.frame(
+    kolumna = names(testy),
+    p_value = sapply(testy, function(x) x$p.value),
+    normalnosc = sapply(testy, function(x) ifelse(x$p.value >= alpha, "normalny", "nienormalny"))
+  )
+  
+  print(result_df)
+}
 
-#PRZEKSZTAŁCENIE DANYCH DO FORMATU DŁUGIEGO W CELU WYKREŚLENIA WIELU WYKRESÓW JEDNOCZEŚNIE
-grupa_long = grupa_badana %>%
-  pivot_longer(
-    cols = c(cykl_kroku_L, cykl_kroku_R, dl_fazy_podp_L, dl_fazy_podp_R, dl_fazy_przen_L, dl_fazy_przen_R, cykl_wykroku_L, cykl_wykroku_R,
-          tempo_kroku_L, tempo_kroku_R, podw_podp, pojed_podp),
-    names_to = "parametr",
-    values_to = "wartosc")
+ks_test = function(df, alpha)
+{
+  testy = lapply(df, function(kolumna){
+    if(is.numeric(kolumna))
+    {
+      wynik = ks.test(kolumna, "pnorm", mean = mean(kolumna), sd = sd(kolumna))
+      return(wynik) #$p.value
+    }
+    else
+    { return(NULL)}
+  })
+  
+  testy = Filter(Negate(is.null), testy)
+  
+  result_df = data.frame(
+    kolumna = names(testy),
+    p_value = sapply(testy, function(x) x$p.value),
+    normalnosc = sapply(testy, function(x) ifelse(x$p.value >= alpha, "normalny", "nienormalny"))
+  )
+  
+  print(result_df)
+}
+
+normality_test(badana_las, alpha)
+normality_test(badana_most, alpha)
+ks_test(badana_las, alpha)
+ks_test(badana_most, alpha)
+
+#========================================================
+#BOX PLOTY PARAMETRÓW CHODU
 
 #grupowanie etykiet parametrow w celu wizualizacji histogramow
 grupa1 = c("cykl_kroku_L", "cykl_kroku_R", "cykl_wykroku_L", "cykl_wykroku_R")
@@ -103,77 +148,53 @@ grupa2 = c("dl_fazy_podp_L", "dl_fazy_podp_R", "dl_fazy_przen_L", "dl_fazy_przen
 grupa3 = c("podw_podp", "pojed_podp")
 grupa4 = c("tempo_kroku_L", "tempo_kroku_R")
 
-#BOX PLOTY PARAMETRÓW CHODU
-#cykle
+grupy_param = list(grupa1,grupa2,grupa3,grupa4)
+tytuly = c("cykle", "fazy", "podparcia", "tempa")
+kolory = c("lightblue", "darkorange", "limegreen", "lightcoral")
   
-create_boxplots = function(zestaw_parametrow, data_frame, nazwa, kolor )
+create_boxplots = function(parametry, df, nazwa, kolor )
 {
-  nazwa_pliku = paste0("boxplot_", nazwa,".png")
+  nazwa_pliku = paste0("bp_", nazwa,".png")
   png(nazwa_pliku, width = 12, height = 8, units = "in", res = 300)
   par(mfrow = c(2, 2), mar = c(2, 2, 2, 1), cex.main = 1.1)
   
-  for(parametr in zestaw_parametrow)
+  for(parametr in parametry)
   {
-    boxplot(data_frame[[parametr]], main = parametr, col = kolor)
-    mediana = round(median(data_frame[[parametr]]),3)
+    boxplot(df[[parametr]], main = parametr, col = kolor)
+    mediana = round(median(df[[parametr]]),3)
     text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
   }
   dev.off()
 }
   
-create_boxplots(grupa1, grupa_badana,"cykle", "lightblue")
-create_boxplots(grupa2, grupa_badana,"fazy", "darkorange")
-create_boxplots(grupa3, grupa_badana,"podparcia", "limegreen")
-create_boxplots(grupa4, grupa_badana,"tempa", "lightcoral")
+create_boxplots(grupa1, badana_las,"cykle", "lightblue")
+create_boxplots(grupa2, badana_las,"fazy", "darkorange")
+create_boxplots(grupa3, badana_las,"podparcia", "limegreen")
+create_boxplots(grupa4, badana_las,"tempa", "lightcoral")
 
+for(i in seq_along(grupy_param))
 {
-png("boxplot_cykle.png", width = 12, height = 8, units = "in", res = 300)
-par(mfrow = c(2, 2), mar = c(2, 2, 2, 1), cex.main = 1.1)
-
-for(parametr in grupa1)
+  create_boxplots(grupy_param[[i]], badana_las, paste0("badana_las_", tytuly[i]), kolory[i])
+}
+for(i in seq_along(grupy_param))
 {
-  boxplot(grupa_badana[[parametr]], main = parametr, col = "lightblue")
-  mediana = round(median(grupa_badana[[parametr]]),3)
-  text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
+  create_boxplots(grupy_param[[i]], badana_most, paste0("badana_most_", tytuly[i]), kolory[i])
 }
-dev.off()
 
-#fazy 
-png("boxplot_fazy.png", width = 12, height = 8, units = "in", res = 300)
-par(mfrow = c(2, 2), mar = c(2, 2, 2, 1), cex.main = 1.1)
-
-for(parametr in grupa2)
+for(i in seq_along(grupy_param))
 {
-  boxplot(grupa_badana[[parametr]], main = parametr, col = "darkorange")
-  mediana = round(median(grupa_badana[[parametr]]),3)
-  text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
+  create_boxplots(grupy_param[[i]], badana_stroop, paste0("badana_stroop_", tytuly[i]), kolory[i])
 }
-dev.off()
+#========================================================
 
-#podparcia
-png("boxplot_podparcia.png", width = 12, height = 8, units = "in", res = 300)
-par(mfrow = c(1,2), mar = c(2, 2, 2, 1), cex.main = 1.1)
+#PRZEKSZTAŁCENIE DANYCH DO FORMATU DŁUGIEGO W CELU WYKREŚLENIA WIELU WYKRESÓW JEDNOCZEŚNIE
+grupa_long = grupa_badana %>%
+  pivot_longer(
+    cols = c(cykl_kroku_L, cykl_kroku_R, dl_fazy_podp_L, dl_fazy_podp_R, dl_fazy_przen_L, dl_fazy_przen_R, cykl_wykroku_L, cykl_wykroku_R,
+             tempo_kroku_L, tempo_kroku_R, podw_podp, pojed_podp),
+    names_to = "parametr",
+    values_to = "wartosc")
 
-for(parametr in grupa3)
-{
-  boxplot(grupa_badana[[parametr]], main = parametr, col = "limegreen")
-  mediana = round(median(grupa_badana[[parametr]]),3)
-  text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
-}
-dev.off()
-
-#tempa
-png("boxplot_tempa.png", width = 12, height = 8, units = "in", res = 300)
-par(mfrow = c(1,2), mar = c(2, 2, 2, 1), cex.main = 1.1)
-
-for(parametr in grupa4)
-{
-  boxplot(grupa_badana[[parametr]], main = parametr, col = "lightcoral")
-  mediana = round(median(grupa_badana[[parametr]]),3)
-  text(1.2, mediana, labels = mediana, pos = 4, cex = 0.9, col = "black")
-}
-dev.off()
-}
 #HISTOGRAMY ROZKLADU PARAMETRÓW CHODU
 {
 #cykle
@@ -283,4 +304,4 @@ ggplot(filter(aggr_long, statystyka == "odchylenie"), aes(x = rodzaj_testu, y = 
 
 dev.off()
 }
-
+#========================================================
