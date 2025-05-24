@@ -29,15 +29,12 @@ grupa_badana$rodzaj_testu = case_when(
 grupa_badana  = grupa_badana %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) #pozbycie sie zbednych kolumn, 
 grupa_badana = grupa_badana[apply(grupa_badana[, -13], 1, function(row) all(row>0)), ] #pozbycie się rekordów z wartościami ujemnymi parametrów
 
-#WYZNACZANIE KWANTYLI I OUTLIEROW
-print(sapply(grupa_badana[, -13],  function(kolumna)
-  {
-    Q = quantile(kolumna, probs = c(0.25, 0.75))
-    IQR = Q[2]-Q[1]
-    c(dolna_granica = Q[1]-3*IQR, gorna_granica = Q[2]+3*IQR)
-}))
-
 parametry_numeryczne = names(grupa_badana)[sapply(grupa_badana, is.numeric)]
+
+drop_outliers = function(data_frame, parametry)
+{
+  
+}
 
 for(kolumna in parametry_numeryczne)
 {
@@ -50,6 +47,7 @@ for(kolumna in parametry_numeryczne)
   #grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
   grupa_badana[[kolumna]][grupa_badana[[kolumna]] < lower | grupa_badana[[kolumna]] > upper] = NA
 }
+
 grupa_badana = na.omit(grupa_badana)
 
 View(grupa_badana)
@@ -69,10 +67,11 @@ badana_most = grupa_badana[grupa_badana$rodzaj_testu == "Most",]
 
 badana_stroop = grupa_badana[grupa_badana$rodzaj_testu == "Test Stroopa",]
 
-View(badana_las)
-View(aggr_las)
-View(badana_most)
-View(badana_stroop)
+#View(badana_las)
+#View(aggr_las)
+#View(badana_most)
+#View(badana_stroop)
+
 #===================================================================================================================
 #TESTY NORMALNOSCI
 
