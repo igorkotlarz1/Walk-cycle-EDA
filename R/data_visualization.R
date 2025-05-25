@@ -26,13 +26,22 @@ grupa_badana$rodzaj_testu = case_when(
     startsWith(grupa_badana$nazwa_testu, "Most") ~ "Most",
     startsWith(grupa_badana$nazwa_testu, "Stroop") ~ "Test Stroopa")
 
-#pozbycie sie zbednych kolumn, 
+grupa_kontrolna$rodzaj_testu = case_when(
+  startsWith(grupa_kontrolna$nazwa_testu, "Las") ~ "Las",
+  startsWith(grupa_kontrolna$nazwa_testu, "Most") ~ "Most",
+  startsWith(grupa_kontrolna$nazwa_testu, "Stroop") ~ "Test Stroopa")
+
+#POZBYCIE SIE ZBEDNYCH KOLUMN, WARTOSCI UJEMNYCH
 grupa_badana  = grupa_badana %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) 
-#pozbycie się rekordów z wartościami ujemnymi parametrów
 grupa_badana = grupa_badana[apply(grupa_badana[, -13], 1, function(row) all(row>0)), ] 
 
-View(grupa_badana)
+grupa_kontrolna = grupa_kontrolna %>% select(-rodzaj_grupy, -id_uczestnika, -nazwa_testu) 
+grupa_kontrolna = grupa_kontrolna[apply(grupa_kontrolna[, -13], 1, function(row) all(row>0)), ] 
 
+View(grupa_badana)
+View(grupa_kontrolna)
+
+#CZYSZCZENIE DATA FRAMEÓW Z OUTLIERÓW
 parametry_numeryczne =  c("cykl_kroku_L", "cykl_kroku_R", "dl_fazy_podp_L", "dl_fazy_podp_R",
                           "dl_fazy_przen_L","dl_fazy_przen_R", "cykl_wykroku_L", "cykl_wykroku_R", "tempo_kroku_L", 
                           "tempo_kroku_R", "podw_podp", "pojed_podp")
@@ -44,8 +53,8 @@ drop_outliers = function(df, parametry)
     Q1 = quantile(df[[kolumna]], 0.25, na.rm = TRUE)
     Q3 = quantile(df[[kolumna]], 0.75, na.rm = TRUE)
     iqr = Q3 - Q1
-    lower = Q1 - 1.0 * iqr
-    upper = Q3 + 1.0 * iqr
+    lower = Q1 - 1.5 * iqr
+    upper = Q3 + 1.5 * iqr
     
     #grupa_badana = grupa_badana[grupa_badana[[kolumna]] >= lower & grupa_badana[[kolumna]] <= upper, ]
     df[[kolumna]][df[[kolumna]] < lower | df[[kolumna]] > upper] = NA
@@ -57,34 +66,52 @@ drop_outliers = function(df, parametry)
 View(grupa_badana)
 
 
-#TWORZENIE OSOBNYCH DATA FRAMEOW DLA KAZDEGO SCNEARIUSZU TESTU FILTRUJAC grupa_badana PO KOLUMNIE rodzaj_testu
+#TWORZENIE OSOBNYCH DATA FRAMEOW DLA KAZDEGO SCNEARIUSZU TESTU FILTRUJAC PO KOLUMNIE rodzaj_testu
+#GRUPA BADANA
 badana_las = grupa_badana[grupa_badana$rodzaj_testu == "Las",]
 badana_most = grupa_badana[grupa_badana$rodzaj_testu == "Most",]
 badana_stroop = grupa_badana[grupa_badana$rodzaj_testu == "Test Stroopa",]
 
-badana_las = drop_outliers(badana_las, parametry_numeryczne)
-badana_most = drop_outliers(badana_most, parametry_numeryczne)
-badana_stroop = drop_outliers(badana_stroop, parametry_numeryczne)
+badana_las_clean = drop_outliers(badana_las, parametry_numeryczne)
+badana_most_clean = drop_outliers(badana_most, parametry_numeryczne)
+badana_stroop_clean = drop_outliers(badana_stroop, parametry_numeryczne)
   
+#GRUPA KONTROLNA
+kontrolna_las = grupa_kontrolna[grupa_kontrolna$rodzaj_testu == "Las",]
+kontrolna_most = grupa_kontrolna[grupa_kontrolna$rodzaj_testu == "Most",]
+kontrolna_stroop = grupa_kontrolna[grupa_kontrolna$rodzaj_testu == "Test Stroopa",]
+
+kontrolna_las_clean = drop_outliers(kontrolna_las, parametry_numeryczne)
+kontrolna_most_clean = drop_outliers(kontrolna_most, parametry_numeryczne)
+kontrolna_stroop_clean = drop_outliers(kontrolna_stroop, parametry_numeryczne)
+
 View(badana_las)
 View(badana_most)
 View(badana_stroop)
 
-#==================================================================================================================
+#===================================================================================================================
 #AGREGACJA GRUPY BADANEJ - GRUPOWANIE PO RODZAJU TESTU
+#BADANA
 aggr_badana = grupa_badana %>%
   group_by(rodzaj_testu) %>%
   summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
-                 
-View(aggr_badana)
 
-aggr_las = badana_las %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
-aggr_most = badana_most %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
-aggr_stroop = badana_las %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+#KONTROLNA
+aggr_kontrolna = grupa_kontrolna %>%
+  group_by(rodzaj_testu) %>%
+  summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))  
+
+View(aggr_badana)
+View(aggr_kontrolna)
+
+aggr_las = badana_las_clean %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+aggr_most = badana_most_clean %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
+aggr_stroop = badana_las_clean %>% summarise(across(where(is.numeric),list(srednia = mean, mediana = median, odchylenie = sd, maksim = max, minim = min)))
 
 View(aggr_las)
 #===================================================================================================================
 #TESTY NORMALNOSCI
+
 set.seed(1234)
 alpha = 0.05 / 12
 
@@ -135,11 +162,12 @@ ks_test = function(df, alpha)
 }
 
 normality_test(badana_las, alpha)
-normality_test(badana_most, alpha)
-ks_test(badana_las, alpha)
-ks_test(badana_most, alpha)
+normality_test(badana_most_clean, alpha)
 
-#========================================================
+ks_test(badana_las, alpha)
+ks_test(badana_most_clean, alpha)
+
+#===================================================================================================================
 #BOX PLOTY PARAMETRÓW CHODU
 
 #grupowanie etykiet parametrow w celu wizualizacji histogramow
@@ -174,134 +202,126 @@ create_boxplots(grupa4, badana_las,"tempa", "lightcoral")
 
 for(i in seq_along(grupy_param))
 {
-  create_boxplots(grupy_param[[i]], badana_las, paste0("badana_las_", tytuly[i]), kolory[i])
-}
-for(i in seq_along(grupy_param))
-{
-  create_boxplots(grupy_param[[i]], badana_most, paste0("badana_most_", tytuly[i]), kolory[i])
+  create_boxplots(grupy_param[[i]], badana_las, paste0("b_las_", tytuly[i]), kolory[i])
+  create_boxplots(grupy_param[[i]], badana_most, paste0("b_most_", tytuly[i]), kolory[i])
+  create_boxplots(grupy_param[[i]], badana_stroop, paste0("b_stroop_", tytuly[i]), kolory[i])
 }
 
-for(i in seq_along(grupy_param))
-{
-  create_boxplots(grupy_param[[i]], badana_stroop, paste0("badana_stroop_", tytuly[i]), kolory[i])
-}
-#========================================================
-
-#PRZEKSZTAŁCENIE DANYCH DO FORMATU DŁUGIEGO W CELU WYKREŚLENIA WIELU WYKRESÓW JEDNOCZEŚNIE
-grupa_long = grupa_badana %>%
-  pivot_longer(
-    cols = c(cykl_kroku_L, cykl_kroku_R, dl_fazy_podp_L, dl_fazy_podp_R, dl_fazy_przen_L, dl_fazy_przen_R, cykl_wykroku_L, cykl_wykroku_R,
-             tempo_kroku_L, tempo_kroku_R, podw_podp, pojed_podp),
-    names_to = "parametr",
-    values_to = "wartosc")
-
+#===================================================================================================================
 #HISTOGRAMY ROZKLADU PARAMETRÓW CHODU
+
+create_hist = function(df, parametry, kolor_fill, kolor_density, binw = 0.03, adj= 2.0, limits, nazwa_pliku) 
 {
-#cykle
-p1 = grupa_long %>%
-  filter(parametr %in% grupa1) %>%
-  ggplot(aes(x = wartosc)) + 
-  geom_histogram(aes(y = after_stat(density)),binwidth = 0.03, fill = "skyblue", color = "white") +
-  geom_density(adjust = 2.0,fill = "skyblue",color = "darkblue", alpha = 0.35)+
-  facet_wrap(~ parametr, scales = "free") +
-  labs(title = NULL, x = NULL, y = NULL) +
-  theme_minimal() +
-  theme(strip.text = element_text(size = 14))+
-  coord_cartesian(xlim = c(0.25, NA))
+  df_long = df %>% 
+    select(all_of(parametry)) %>%
+    pivot_longer(cols= everything(), names_to = "parametr", values_to = "wartosc")
+ 
+  wykres = df_long %>% 
+    ggplot(aes(x = wartosc))+
+    geom_histogram(aes(y = after_stat(density)),binwidth = binw, fill = kolor_fill, color = "white") +
+    geom_density(adjust = adj, fill = kolor_fill, color = kolor_density, alpha = 0.35)+
+    facet_wrap(~ parametr, scales = "free") +
+    labs(title = NULL, x = NULL, y = NULL) +
+    theme_minimal() +
+    theme(strip.text = element_text(size = 14))+
+    coord_cartesian(xlim = limits)
+    
+  #png(paste0(nazwa_pliku, ".png"), width = 1920, height = 1080, res = 200)
+  print(wykres)
+  #dev.off()
+}
 
-  #print(p1)
-
-#fazy 
-p2 = grupa_long %>%
-  filter(parametr %in% grupa2) %>%
-  ggplot(aes(x = wartosc)) +
-  geom_histogram(aes(y = after_stat(density)),binwidth = 0.03, fill = "darkorange", color = "white") +
-  geom_density(adjust = 2.5,fill = "orange",color =  "black", alpha = 0.35)+
-  facet_wrap(~ parametr, scales = "free") +
-  labs(title = NULL, x = NULL, y = NULL) +
-  theme_minimal()+
-  theme(strip.text = element_text(size = 14))+
-  coord_cartesian(xlim = c(0, 1.0))
-
-  #print(p2)
-
-#podparcia
-p3 = grupa_long %>%
-  filter(parametr %in% grupa3) %>%
-  ggplot(aes(x = wartosc)) +
-  geom_histogram(aes(y = after_stat(density)),binwidth = 0.03, fill = "limegreen", color = "white") + #aes(y = after_stat(density))
-  geom_density(adjust = 2.5,fill = "limegreen",color = "darkgreen", alpha = 0.35)+
-  facet_wrap(~ parametr, scales = "free") +
-  labs(title = NULL, x = NULL, y = NULL) + #y = "Liczba obserwacji"
-  theme_minimal()+
-  theme(strip.text = element_text(size = 14))+
-  coord_cartesian(xlim = c(0, NA))
-  #print(p3)
-
-#tempa
-p4 = grupa_long %>%
-  filter(parametr %in% grupa4) %>%
-  ggplot(aes(x = wartosc)) +
-  geom_histogram(aes(y = after_stat(density)),binwidth = 3, fill = "#C62828", color = "white") +
-  geom_density(adjust = 3.0,fill = "pink",color = "black", alpha = 0.35)+
-  facet_wrap(~ parametr, scales = "free") +
-  labs(title = NULL, x = NULL, y = NULL) +
-  theme_minimal()+
-  theme(strip.text = element_text(size = 14))+
-  coord_cartesian(xlim = c(25, 100))
-
-  #print(p4)
-
-#SKRYPT DO AUTOMATYCZNEGO ZAPISYWANIA WYKRESÓW DO FORMATU .png 
-histogramy = list(p1,p2,p3,p4) 
-tytuly_hist = c("hist_cykle", "hist_fazy", "hist_podparcia","hist_tempa")
-
-for(i in seq_along(histogramy))
+kolory_dens = c("darkblue", "black", "darkgreen", "black") 
+bins = c(0.03, 0.03, 0.03, 3)
+adjusts = c(2.0, 2.5, 2.5, 3.0)
+limits = list(c(0.25,NA), c(0, 1.0), c(0, NA), c(25, 100))
+ 
+for(i in seq_along(grupy_param))
 {
-  p = histogramy[[i]]
-  tytul = tytuly_hist[i]
-  nazwa_png = paste0(tytul,".png")
-  nazwa_png_2 = paste0(tytul,"_norm",".png")
+  #create_hist(df = grupa_badana, parametry = grupy_param[[i]], kolor_fill = kolory[i], 
+  # kolor_density = kolory_dens[i], binw = bins[i], adj = adjusts[i], limits = limits[[i]], nazwa_pliku = tytuly[i])
   
-  png(nazwa_png_2, width = 1920, height = 1080, res = 200)
-  print(p)
+  #create_hist(df = badana_most, parametry = grupy_param[[i]], kolor_fill = kolory[i], 
+  # kolor_density = kolory_dens[i], binw = bins[i], adj = adjusts[i], limits = limits[[i]], nazwa_pliku = tytuly[i])
+  
+  #create_hist(df = badana_las, parametry = grupy_param[[i]], kolor_fill = kolory[i], 
+  # kolor_density = kolory_dens[i], binw = bins[i], adj = adjusts[i], limits = limits[[i]], nazwa_pliku = tytuly[i])
+  
+  create_hist(df = badana_stroop, parametry = grupy_param[[i]], kolor_fill = kolory[i], 
+              kolor_density = kolory_dens[i], binw = bins[i], adj = adjusts[i], limits = limits[[i]], nazwa_pliku = tytuly[i])
+}
+
+create_hist(badana_las, grupa1,"skyblue", "darkblue", 0.03, "b_cykle")
+create_hist(badana_las, grupa2,"darkorange", "black", 0.03, "b_fazy")
+create_hist(badana_las, grupa3,"limegreen", "darkgreen", 0.03, "b_fazy")
+create_hist(badana_las, grupa4,"#C62828", "black", 3, "b_fazy")
+
+#===================================================================================================================
+#TWORZENIE QQ-PLOTÓW W CELU WERYFIKACJI NORMALNOŚCI ROZKŁADU
+
+create_qqplots = function(df, parametry, kolor, tytul) 
+{
+  # Pivot do formatu długiego
+  df_long = df %>%
+    pivot_longer(
+      cols = all_of(parametry),
+      names_to = "parametr",
+      values_to = "wartosc")
+  
+  # Tworzenie wykresu QQ
+  wykres = df_long %>%
+    ggplot(aes(sample = wartosc)) +
+    stat_qq(color = kolor) +
+    stat_qq_line(color = "black") +
+    facet_wrap(~ parametr, scales = "free") +
+    theme_minimal() +
+    labs(title = paste("QQ-plots:", tytul), x = "Teoretyczne", y = "Probka") +
+    theme(strip.text = element_text(size = 14))
+  
+  
+  print(wykres)
+  # Zapis do pliku
+  nazwa = paste0("qqplot_", tytul, ".png")
+  #ggsave(nazwa, plot = p, width = 12, height = 8, dpi = 300)
+}
+
+create_qqplots(badana_most_clean, grupa1, "steelblue", "cykle")
+create_qqplots(badana_most_clean, grupa2, "orange", "fazy")
+create_qqplots(badana_most_clean, grupa3, "limegreen", "podparcia")
+create_qqplots(badana_most_clean, grupa4, "lightcoral", "tempa")
+
+
+#===================================================================================================================
+#TWORZENIE ZBIORCZEGO WYKRESU WYNIKÓW AGREGACJI
+
+create_barplot = function (df, nazwa_stat, y_label, nazwa_pliku)
+{
+  df_long = df %>%
+    pivot_longer(
+      cols = -rodzaj_testu,
+      names_to = c("parametr", "statystyka"),
+      names_sep = "_(?=[^_]+$)")
+  
+  wykres = ggplot(filter(df_long, statystyka == nazwa_stat), aes(x = rodzaj_testu, y = value, fill = rodzaj_testu)) +
+    geom_bar(stat = "identity", color = "white") +
+    geom_text(aes(label = round(value, 3)),vjust = 1.5, size = 3, color = "black")+
+    facet_wrap(~parametr, scales = "free_y") +
+    labs(title = NULL, x = NULL, y = y_label) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  png(paste0(nazwa_pliku, ".png"), width = 1920, height = 1080, res = 200)
+  
+  print(wykres)
+  
   dev.off()
 }
-  
-#TWORZENIE ZBIORCZEGO WYKRESU WYNIKÓW AGREGACJI
-aggr_long = aggr_badana %>%
-  pivot_longer(
-    cols = -rodzaj_testu,
-    names_to = c("parametr", "statystyka"),
-    names_sep = "_(?=[^_]+$)"
-  )
-}
+
 #ZESTAWIENIE ŚREDNICH W ZALEŻNOŚCI OD RODZAJU TESTU
-{
-png("srednie_parametry_badani.png", width = 1920, height = 1080, res = 200)
-
-ggplot(filter(aggr_long, statystyka == "srednia"), aes(x = rodzaj_testu, y = value, fill = rodzaj_testu)) +
-  geom_bar(stat = "identity", color = "white") +
-  geom_text(aes(label = round(value, 3)),vjust = 2, size = 3, color = "black")+
-  facet_wrap(~parametr, scales = "free_y") +
-  labs(title = NULL, x = NULL, y = "Średnia") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-dev.off()
+create_barplot(aggr_badana, "srednia", "Średnia", "srednie_b")
+create_barplot(aggr_kontrolna, "srednia", "Średnia", "srednie_k")
 
 #ZESTAWIENIE ODCHYLEŃ STANDARDOWYCH W ZALEŻNOŚCI OD RODZAJU TESTU
+create_barplot(aggr_badana, "odchylenie", "Odchylenie standardowe", "odchylenia_b")
+create_barplot(aggr_kontrolna, "odchylenie", "Odchylenie standardowe", "odchylenia_k")
 
-png("odchylenie_parametry_badani.png", width = 1920, height = 1080, res = 200)
-
-ggplot(filter(aggr_long, statystyka == "odchylenie"), aes(x = rodzaj_testu, y = value, fill = rodzaj_testu)) +
-  geom_bar(stat = "identity", color = "white") +
-  geom_text(aes(label = round(value, 3)),vjust = 1.5, size = 3, color = "black")+
-  facet_wrap(~parametr, scales = "free_y") +
-  labs(title = NULL, x = NULL, y = "Odchylenie standardowe") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-dev.off()
-}
-#========================================================
