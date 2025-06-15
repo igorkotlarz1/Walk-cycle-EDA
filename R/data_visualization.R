@@ -6,6 +6,7 @@ library(tidyr)
 library(tidyverse) #workflow, pipeliney
 
 library(nortest) #dodatkowe testy normalnosci
+library(corrplot)
 
 path_badani = "C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Badana_10_parametry_kroku.csv"  #.xlsx
 path_kontrolna ="C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Kontrolna_10_parametry_kroku.csv"
@@ -383,3 +384,25 @@ create_barplot(aggr_kontrolna, "mediana", "Mediana", "mediany_kontrolna")
 create_barplot(aggr_badana, "odchylenie", "Odchylenie standardowe", "odchylenia_b")
 create_barplot(aggr_kontrolna, "odchylenie", "Odchylenie standardowe", "odchylenia_k")
 
+#===================================================================================================================
+#BADANIE KORELACJI MIEDZY CECHAMI W DANEJ GRUPIE
+
+create_corrplot = function(df, tytul)
+{
+  cor_matrix = cor(df[,-13], use ="complete.obs", method = "pearson")
+  cor_matrix = round(cor_matrix, 2)
+  #pozostawienie wartosci ze wspolczynnikiem korelacji >= 0.5
+  cor_matrix[abs(cor_matrix) < 0.7 ] = NA 
+  
+  png(paste0("corr_", tytul, ".png"), width = 900, height = 757, res = 100)
+  cp = corrplot(cor_matrix, method = "number", type ="lower", mar = c(0, 0, 2, 0), title = tytul)
+  #print(cp)
+  dev.off()
+}
+
+create_corrplot(grupa_badana_clean, "grupa_badana")
+create_corrplot(grupa_kontrolna_clean, "grupa_kontrolna")
+
+create_corrplot(badana_las_clean, "grupa_badana_las")
+create_corrplot(badana_most_clean, "grupa_badana_most")
+create_corrplot(badana_stroop_clean, "grupa_badana_stroop")
