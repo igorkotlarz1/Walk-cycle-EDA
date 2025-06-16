@@ -3,9 +3,7 @@ library(ggplot2) #wizualizacja
 library(gridExtra) #wiele wykresow jednoczesnie
 library(dplyr) #agregacja
 library(tidyr)
-library(tidyverse) #workflow, pipeliney
-
-library(nortest) #dodatkowe testy normalnosci
+library(tidyverse)
 library(corrplot)
 
 path_badani = "C:/Users/igor/Desktop/MS_projekt/P03_A/ASD_Badana_10_parametry_kroku.csv"  #.xlsx
@@ -385,24 +383,74 @@ create_barplot(aggr_badana, "odchylenie", "Odchylenie standardowe", "odchylenia_
 create_barplot(aggr_kontrolna, "odchylenie", "Odchylenie standardowe", "odchylenia_k")
 
 #===================================================================================================================
+#BADANIE MIARY EFEKTU MIEDZY GRUPAMI
+
+cohen_effect = function(df1, df2, tytul)
+{
+  wyniki = lapply(seq_along(df1), function(i){
+    
+    x = df1[[i]]
+    y = df2[[i]]
+    
+    if(is.numeric(x) && is.numeric(y))
+    {
+      m1 = mean(x, na.rm = TRUE)
+      m2 = mean(y, na.rm = TRUE)
+      
+      s1 = sd(x, na.rm = TRUE)
+      s2 = sd(y, na.rm = TRUE)
+      
+      n1= length(x)
+      n2= length(y)
+      
+      s_pooled = sqrt(((n1 - 1)*s1^2 + (n2 - 1)*s2^2) / (n1 + n2 - 2))
+      d = (m1 - m2) / s_pooled
+      
+      return(round(d,2))
+    }
+    else { return(NA)}
+  })
+  
+  wyniki_df = data.frame( parametr = names(df1), d = unlist(wyniki))
+  print(tytul)
+  print(wyniki_df)
+}
+
+cohen_effect(grupa_badana_clean, grupa_kontrolna_clean , "wszystkie scenariusze razem")
+cohen_effect(badana_las_clean, kontrolna_las_clean, "scenariusz LAS")
+cohen_effect(badana_most_clean, kontrolna_most_clean, "scenariusz MOST")
+cohen_effect(badana_stroop_clean, kontrolna_stroop_clean, "scenariusz TEST STROOPA")
+
+
+#===================================================================================================================
 #BADANIE KORELACJI MIEDZY CECHAMI W DANEJ GRUPIE
 
 create_corrplot = function(df, tytul)
 {
   cor_matrix = cor(df[,-13], use ="complete.obs", method = "pearson")
   cor_matrix = round(cor_matrix, 2)
-  #pozostawienie wartosci ze wspolczynnikiem korelacji >= 0.5
-  cor_matrix[abs(cor_matrix) < 0.7 ] = NA 
+  
+  print(cor_matrix)
   
   png(paste0("corr_", tytul, ".png"), width = 900, height = 757, res = 100)
-  cp = corrplot(cor_matrix, method = "number", type ="lower", mar = c(0, 0, 2, 0), title = tytul)
-  #print(cp)
+  
+  cp = corrplot(cor_matrix, method = "number", type ="lower", 
+                tl.col = "black", mar = c(0, 0, 2, 0), title = tytul)
   dev.off()
 }
 
 create_corrplot(grupa_badana_clean, "grupa_badana")
 create_corrplot(grupa_kontrolna_clean, "grupa_kontrolna")
 
+
 create_corrplot(badana_las_clean, "grupa_badana_las")
+create_corrplot(kontrolna_las_clean, "grupa_kontrolna_las")
+
 create_corrplot(badana_most_clean, "grupa_badana_most")
+create_corrplot(kontrolna_most_clean, "grupa_kontrolna_most")
+
+create_corrplot(kontrolna_stroop_clean, "grupa_kontrolna_stroop")
 create_corrplot(badana_stroop_clean, "grupa_badana_stroop")
+
+
+
