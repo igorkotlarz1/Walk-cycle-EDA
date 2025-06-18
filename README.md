@@ -1,1 +1,1 @@
-# MS_projekt
+# Statistical Methods Final Project
