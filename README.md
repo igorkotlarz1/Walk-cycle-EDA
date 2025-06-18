@@ -1,1 +1,1 @@
-# Statistical Methods Final Project
+# Statistical Methods Final Project - Walk Cycle Analysis
